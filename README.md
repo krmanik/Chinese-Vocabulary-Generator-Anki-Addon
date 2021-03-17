@@ -8,8 +8,8 @@ Create Chinese vocabulary list with examples sentences and audio and notes data 
 ## Download Offline Version
 [Download this Addon from Patreon](https://www.patreon.com/posts/chinese-anki-v1-47941679)
 
-Note: The offline version have only dictionary data. The audio and sentences translation will be still fetched online. 
-But it will create notes instantly without audio and sentences translation.
+Note: The offline version have dictionary data and example sentences translation. But words not in cedict and audio files will be still fetched online.
+But it will create notes instantly without audio.
 
 Features
 - Characters

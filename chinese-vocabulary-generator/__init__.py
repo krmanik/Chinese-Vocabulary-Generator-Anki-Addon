@@ -13,6 +13,7 @@ from anki.notes import Note
 
 import os
 import sys
+import json
 
 folder = os.path.dirname(__file__)
 libfolder = os.path.join(folder, "lib")
@@ -21,11 +22,7 @@ sys.path.insert(0, libfolder)
 import requests
 import sqlite3
 import random
-import jieba
 import pinyin
-
-import logging
-jieba.setLogLevel(logging.ERROR)
 
 from gtts import gTTS
 from cedict import pinyinize
@@ -73,6 +70,7 @@ class CVG_Dialog(QDialog):
 
         self.ch_sen_cb = QCheckBox("Sentence")
         self.ch_sen_cb.setChecked(True)
+        self.ch_sen_cb.clicked.connect(self.related_sen_cb)
         optionsLayout.addWidget(self.ch_sen_cb)
 
         self.ch_sen_trad_cb = QCheckBox("Sentence Traditional")
@@ -104,6 +102,20 @@ class CVG_Dialog(QDialog):
         layout.addLayout(optionsLayout)
         layout.addWidget(self.btnBox)
         self.setLayout(layout)
+
+    def related_sen_cb(self):
+        if not self.ch_sen_cb.isChecked():
+            self.ch_sen_trad_cb.setChecked(False)
+            optionsChecked['ch_sen_trad'] = False
+
+            self.ch_sen_pin_cb.setChecked(False)
+            optionsChecked['ch_sen_pin'] = False
+
+            self.ch_sen_tra_cb.setChecked(False)
+            optionsChecked['ch_sen_tra'] = False
+
+            self.ch_sen_audio_cb.setChecked(False)
+            optionsChecked['ch_sen_audio'] = False
 
     def show_cvg_window(self):
 
@@ -337,11 +349,32 @@ class CVG_Window(QDialog):
         ch_sim = self.ch_sim_group_text_edit.toPlainText().strip()
         #ch_trad = HanziConv.toTraditional(ch_sim)
 
-        base_url = "https://cdn.jsdelivr.net/gh/infinyte7/cedict-json/v2/"
-        ch_url = base_url + ch_sim + ".json"
-        r = requests.get(ch_url)
+        char_json = folder+"/cedict/"+ ch_sim + ".json"
 
-        if r.status_code == 404:
+        if os.path.exists(char_json):
+            with open(char_json, encoding="utf-8") as f:
+                ch_data = json.load(f)
+
+                if optionsChecked['ch_trad']:
+                    self.ch_trad_group_text_edit.setText(ch_data['traditional'])
+
+                if optionsChecked['ch_pin']:
+                    ch_pin = ""
+                    for p in ch_data['pinyin']:
+                        ch_pin += pinyinize(p) + ", "
+                    ch_pin.strip().rstrip(", ")
+                    self.ch_pin_group_text_edit.setText(ch_pin)
+
+                if optionsChecked['ch_mean']:
+                    ch_mean = ""
+                    if len(ch_data['definitions']) > 1:
+                        for d in ch_data['definitions']:
+                            ch_mean += d + "\n" + ch_data['definitions'][d].replace("; ", "\n").strip() + "\n\n"
+                    else:
+                        ch_mean += ch_data['definitions'][ch_data['pinyin'][0]].replace("; ", "\n").strip() + "\n\n"
+                    self.ch_mean_group_text_edit.setText(ch_mean)
+
+        else:
             if optionsChecked['ch_trad']:
                 self.ch_trad_group_text_edit.setText(HanziConv.toTraditional(ch_sim))
 
@@ -352,29 +385,6 @@ class CVG_Window(QDialog):
                 translator = Translator()
                 t1 = translator.translate(ch_sim, src='zh-cn', dest="en")
                 self.ch_mean_group_text_edit.setText(t1.text)
-
-        if r.status_code == 200:
-            ch_data = r.json()
-
-            if optionsChecked['ch_trad']:
-                self.ch_trad_group_text_edit.setText(ch_data['traditional'])
-
-            if optionsChecked['ch_pin']:
-                ch_pin = ""
-                for p in ch_data['pinyin']:
-                    ch_pin += pinyinize(p) + ", "
-                ch_pin.strip().rstrip(", ")
-                self.ch_pin_group_text_edit.setText(ch_pin)
-
-            if optionsChecked['ch_mean']:
-                ch_mean = ""
-                if len(ch_data['definitions']) > 1:
-                    for d in ch_data['definitions']:
-                        ch_mean += d + "\n" + ch_data['definitions'][d].replace("; ", "\n").strip() + "\n\n"
-                else:
-                    ch_mean += ch_data['definitions'][ch_data['pinyin'][0]].replace("; ", "\n").strip() + "\n\n"
-                self.ch_mean_group_text_edit.setText(ch_mean)
-
 
     def get_audio_ch_sim(self):
         ch_sim = self.ch_sim_group_text_edit.toPlainText().strip()
@@ -506,10 +516,10 @@ class CVG_Window(QDialog):
     def get_sentence(self, char):
         self.sen_i += 1
 
-        con = sqlite3.connect(folder+"/data.db")
+        con = sqlite3.connect(folder+"/sen_data.db")
         cur = con.cursor()
 
-        sql = "Select sentence from data where sentence like " + "'%" + char + "%'"
+        sql = "Select simplified, traditional, pinyin, english from examples where simplified like " + "'%" + char + "%'"
 
         cur.execute(sql)
         sent = cur.fetchall()
@@ -518,8 +528,7 @@ class CVG_Window(QDialog):
         s1 = HanziConv.toSimplified(r1[0])
         trad1 = HanziConv.toTraditional(s1)
 
-        seg_list = jieba.cut(s1, cut_all=False)
-        p1 = pinyin.get(" ".join(seg_list))
+        p1 = r1[2]
 
         ch_sen = self.ch_sen_group_text_edit.toPlainText().strip()
         if ch_sen != "":
@@ -535,9 +544,7 @@ class CVG_Window(QDialog):
             ch_sen += "ch_sen_pin:" + p1 + "\n"
 
         if optionsChecked['ch_sen_tra']:
-            translator = Translator()
-            t1 = translator.translate(s1, src='zh-cn', dest="en")
-            ch_sen += "ch_sen_tr:" + t1.text + "\n"
+            ch_sen += "ch_sen_tr:" + r1[3] + "\n"
 
         if optionsChecked['ch_sen_audio']:
             if s1 != "":
