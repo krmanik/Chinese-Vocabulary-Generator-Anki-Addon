@@ -103,6 +103,8 @@ class CVG_Dialog(QDialog):
         layout.addWidget(self.btnBox)
         self.setLayout(layout)
 
+        
+
     def related_sen_cb(self):
         if not self.ch_sen_cb.isChecked():
             self.ch_sen_trad_cb.setChecked(False)
@@ -345,34 +347,33 @@ class CVG_Window(QDialog):
         layout.addWidget(self.buttonBox)
         self.setLayout(layout)
 
+        self.init_json()
+        
+
     def cvg_get_ch_data(self):
         ch_sim = self.ch_sim_group_text_edit.toPlainText().strip()
         #ch_trad = HanziConv.toTraditional(ch_sim)
 
-        char_json = folder+"/cedict/"+ ch_sim + ".json"
+        if ch_sim in self.cedict_json_data:
+            char_json = self.cedict_json_data[ch_sim]
+            if optionsChecked['ch_trad']:
+                self.ch_trad_group_text_edit.setText(char_json['traditional'])
 
-        if os.path.exists(char_json):
-            with open(char_json, encoding="utf-8") as f:
-                ch_data = json.load(f)
+            if optionsChecked['ch_pin']:
+                ch_pin = ""
+                for p in char_json['pinyin']:
+                    ch_pin += pinyinize(p) + ", "
+                ch_pin.strip().rstrip(", ")
+                self.ch_pin_group_text_edit.setText(ch_pin)
 
-                if optionsChecked['ch_trad']:
-                    self.ch_trad_group_text_edit.setText(ch_data['traditional'])
-
-                if optionsChecked['ch_pin']:
-                    ch_pin = ""
-                    for p in ch_data['pinyin']:
-                        ch_pin += pinyinize(p) + ", "
-                    ch_pin.strip().rstrip(", ")
-                    self.ch_pin_group_text_edit.setText(ch_pin)
-
-                if optionsChecked['ch_mean']:
-                    ch_mean = ""
-                    if len(ch_data['definitions']) > 1:
-                        for d in ch_data['definitions']:
-                            ch_mean += d + "\n" + ch_data['definitions'][d].replace("; ", "\n").strip() + "\n\n"
-                    else:
-                        ch_mean += ch_data['definitions'][ch_data['pinyin'][0]].replace("; ", "\n").strip() + "\n\n"
-                    self.ch_mean_group_text_edit.setText(ch_mean)
+            if optionsChecked['ch_mean']:
+                ch_mean = ""
+                if len(char_json['definitions']) > 1:
+                    for d in char_json['definitions']:
+                        ch_mean += d + "\n" + char_json['definitions'][d].replace("; ", "\n").strip() + "\n\n"
+                else:
+                    ch_mean += char_json['definitions'][char_json['pinyin'][0]].replace("; ", "\n").strip() + "\n\n"
+                self.ch_mean_group_text_edit.setText(ch_mean)
 
         else:
             if optionsChecked['ch_trad']:
@@ -512,6 +513,10 @@ class CVG_Window(QDialog):
 
         if optionsChecked['ch_aud']:
             self.ch_aud_group_text_edit.clear()
+
+    def init_json(self):
+        with open(folder+"/cedict/all_cedict.json", "r", encoding="utf-8") as f:
+            self.cedict_json_data = json.load(f)            
 
     def get_sentence(self, char):
         self.sen_i += 1
