@@ -6,7 +6,7 @@ Create Chinese vocabulary list with examples sentences and audio and notes data 
 [Download this Addon from AnkiWeb](https://ankiweb.net/shared/info/1370756741)
 
 ## Download Offline Version
-[Download this Addon from Patreon](https://www.patreon.com/posts/chinese-anki-v1-47941679)
+[Download this Addon from GitHub](https://github.com/infinyte7/Chinese-Vocabulary-Generator-Anki-Addon/releases)
 
 Note: The offline version have dictionary data and example sentences translation. But words not in cedict and audio files will be still fetched online.
 But it will create notes instantly without audio.
